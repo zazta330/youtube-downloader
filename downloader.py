@@ -1,5 +1,6 @@
 import yt_dlp
 import os
+import sys
 
 import shutil
 
@@ -7,6 +8,16 @@ class VideoDownloader:
     def __init__(self):
         # Check standard PATH
         self.ffmpeg_available = shutil.which('ffmpeg') is not None
+        self.ffmpeg_location = None
+
+        # Check for bundled FFmpeg (PyInstaller)
+        if hasattr(sys, '_MEIPASS'):
+            bundled_ffmpeg = os.path.join(sys._MEIPASS, 'ffmpeg.exe')
+            if os.path.exists(bundled_ffmpeg):
+                self.ffmpeg_available = True
+                self.ffmpeg_location = sys._MEIPASS # yt-dlp expects directory or executable path? 
+                # yt-dlp 'ffmpeg_location' can be a directory or file. 
+                # If directory, it looks for ffmpeg.exe inside.
         
         # Check Winget path if not found
         if not self.ffmpeg_available:
@@ -19,11 +30,15 @@ class VideoDownloader:
                     self.ffmpeg_available = True
 
         self.ydl_opts = {
+
             'format': 'bestvideo+bestaudio/best' if self.ffmpeg_available else 'best',
             'outtmpl': '%(uploader)s/%(title)s.%(ext)s',
             'noplaylist': False,
             'progress_hooks': [self.progress_hook],
         }
+        if self.ffmpeg_location:
+            self.ydl_opts['ffmpeg_location'] = self.ffmpeg_location
+
         self.progress_callback = None
 
     def set_progress_callback(self, callback):
